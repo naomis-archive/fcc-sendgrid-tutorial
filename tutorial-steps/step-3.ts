@@ -37,67 +37,63 @@ sgMail.setApiKey(apiKey);
 const filePath = path.join(__dirname + "/validEmails.csv");
 const bouncePath = path.join(__dirname + "/bouncedEmails.csv");
 
-// Use a global variable for the bounced list because
-// readFile returns void
-let bounceList: string[];
-
 // Read through the bounce list, parse into array
 readFile(bouncePath, "utf8", (err, data) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
-  bounceList = data.split("\n").slice(1);
-});
+  const bounceList = data.split("\n").slice(1);
 
-// This is where we start reading the file!
-readFile(filePath, "utf8", (err, data) => {
-  if (err) {
-    console.error(err);
-    return;
-  }
-
-  // Here we parse the data into an object array
-  const emailList = data
-    .split("\n")
-    .slice(1)
-    .map((el) => {
-      const [email, unsubscribeId] = el.split(",");
-      return { email, unsubscribeId };
-    });
-
-  // Here we iterate through the emailList array
-  emailList.forEach((user) => {
-    // Here we check if the email has been bounced
-    if (bounceList.includes(user.email)) {
-      console.info(`Message send skipped: ${user.email}`);
+  // This is where we start reading the file!
+  readFile(filePath, "utf8", (err, data) => {
+    if (err) {
+      console.error(err);
       return;
     }
 
-    // This is the message object SendGrid needs
-    const message: MailDataRequired = {
-      to: user.email,
-      from: fromAddress,
-      subject: subjectValue,
-      text: "This goes away!",
-      templateId: sgTemplate,
-      dynamicTemplateData: {
-        subject: subjectValue,
-        unsubscribeId: user.unsubscribeId,
-      },
-    };
-
-    // Here we send the message we just constructed!
-    sgMail
-      .send(message)
-      .then(() => {
-        // Here we log successful send requests
-        console.info(`Message send success: ${user.email}`);
-      })
-      .catch((err) => {
-        // Here we log errored send requests
-        console.error(err);
-        console.error(`Message send failed: ${user.email}`);
+    // Here we parse the data into an object array
+    const emailList = data
+      .split("\n")
+      .slice(1)
+      .map((el) => {
+        const [email, unsubscribeId] = el.split(",");
+        return { email, unsubscribeId };
       });
+
+    // Here we iterate through the emailList array
+    emailList.forEach((user) => {
+      // Here we check if the email has been bounced
+      if (bounceList.length && bounceList.includes(user.email)) {
+        console.info(`Message send skipped: ${user.email}`);
+        return;
+      }
+
+      // This is the message object SendGrid needs
+      const message: MailDataRequired = {
+        to: user.email,
+        from: fromAddress,
+        subject: subjectValue,
+        text: "This goes away!",
+        templateId: sgTemplate,
+        dynamicTemplateData: {
+          subject: subjectValue,
+          unsubscribeId: user.unsubscribeId,
+        },
+      };
+
+      // Here we send the message we just constructed!
+      sgMail
+        .send(message)
+        .then(() => {
+          // Here we log successful send requests
+          console.info(`Message send success: ${user.email}`);
+        })
+        .catch((err) => {
+          // Here we log errored send requests
+          console.error(err);
+          console.error(`Message send failed: ${user.email}`);
+        });
+    });
   });
 });

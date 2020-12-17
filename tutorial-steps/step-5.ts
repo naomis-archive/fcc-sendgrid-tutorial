@@ -48,10 +48,6 @@ const failedStream = createWriteStream(failedPath);
 // Here we add the header row
 failedStream.write("email,unsubscribeId\n");
 
-// Use a global variable for the bounced list because
-// readFile returns void
-let bounceList: string[];
-
 console.info("Reading bounced email list...");
 
 // Read through the bounce list, parse into array
@@ -61,87 +57,87 @@ readFile(bouncePath, "utf8", (err, data) => {
     console.error("Failed to read bounced emails!");
     process.exit(1);
   }
-  bounceList = data.split("\n");
-});
+  const bounceList = data.split("\n").slice(1);
 
-console.info("Bounced emails read!");
+  console.info("Bounced emails read!");
 
-console.info("Reading send list...");
-// This is where we start reading the file!
-readFile(filePath, "utf8", (err, data) => {
-  if (err) {
-    console.error(err);
-    console.error("Failed to read send list!");
-    return;
-  }
-
-  // Here we parse the data into an object array
-  const emailList = data
-    .split("\n")
-    .slice(1)
-    .map((el) => {
-      const [email, unsubscribeId] = el.split(",");
-      return { email, unsubscribeId };
-    });
-
-  // Here we create variables for counting
-  const emailTotal = emailList.length;
-  let emailCount = 0;
-
-  // Here we iterate through the emailList array
-  emailList.forEach((user) => {
-    // Here we check if the email has been bounced
-    if (bounceList.length && bounceList.includes(user.email)) {
-      console.info(`Message send skipped: ${user.email}`);
-      emailCount++;
-      if (emailCount === emailTotal) {
-        console.info(
-          `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
-        );
-      }
+  console.info("Reading send list...");
+  // This is where we start reading the file!
+  readFile(filePath, "utf8", (err, data) => {
+    if (err) {
+      console.error(err);
+      console.error("Failed to read send list!");
       return;
     }
 
-    // This is the message object SendGrid needs
-    const message: MailDataRequired = {
-      to: user.email,
-      from: fromAddress,
-      subject: subjectValue,
-      text: "This goes away!",
-      templateId: sgTemplate,
-      dynamicTemplateData: {
-        subject: subjectValue,
-        unsubscribeId: user.unsubscribeId,
-      },
-    };
-
-    // Here we send the message we just constructed!
-    sgMail
-      .send(message)
-      .then(() => {
-        // Here we log successful send requests
-        console.info(`Message send success: ${user.email}`);
-        // Here we handle the email counts
-        emailCount++;
-        if (emailCount === emailTotal) {
-          console.info(
-            `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
-          );
-        }
-      })
-      .catch((err) => {
-        // Here we log errored send requests
-        console.error(err);
-        console.error(`Message send failed: ${user.email}`);
-        // And here we add that email to the failedEmails.csv
-        failedStream.write(`${user.email},${user.unsubscribeId}\n`);
-        // Here we handle the email counts
-        emailCount++;
-        if (emailCount === emailTotal) {
-          console.info(
-            `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
-          );
-        }
+    // Here we parse the data into an object array
+    const emailList = data
+      .split("\n")
+      .slice(1)
+      .map((el) => {
+        const [email, unsubscribeId] = el.split(",");
+        return { email, unsubscribeId };
       });
+
+    // Here we create variables for counting
+    const emailTotal = emailList.length;
+    let emailCount = 0;
+
+    // Here we iterate through the emailList array
+    emailList.forEach((user) => {
+      // Here we check if the email has been bounced
+      if (bounceList.length && bounceList.includes(user.email)) {
+        console.info(`Message send skipped: ${user.email}`);
+        emailCount++;
+        if (emailCount === emailTotal) {
+          console.info(
+            `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
+          );
+        }
+        return;
+      }
+
+      // This is the message object SendGrid needs
+      const message: MailDataRequired = {
+        to: user.email,
+        from: fromAddress,
+        subject: subjectValue,
+        text: "This goes away!",
+        templateId: sgTemplate,
+        dynamicTemplateData: {
+          subject: subjectValue,
+          unsubscribeId: user.unsubscribeId,
+        },
+      };
+
+      // Here we send the message we just constructed!
+      sgMail
+        .send(message)
+        .then(() => {
+          // Here we log successful send requests
+          console.info(`Message send success: ${user.email}`);
+          // Here we handle the email counts
+          emailCount++;
+          if (emailCount === emailTotal) {
+            console.info(
+              `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
+            );
+          }
+        })
+        .catch((err) => {
+          // Here we log errored send requests
+          console.error(err);
+          console.error(`Message send failed: ${user.email}`);
+          // And here we add that email to the failedEmails.csv
+          failedStream.write(`${user.email},${user.unsubscribeId}\n`);
+          // Here we handle the email counts
+          emailCount++;
+          if (emailCount === emailTotal) {
+            console.info(
+              `Sending complete! Sent ${emailTotal} emails. Have a nice day!`
+            );
+          }
+        });
+    });
   });
 });

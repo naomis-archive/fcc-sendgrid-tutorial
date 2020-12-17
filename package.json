@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A sample SendGrid application for use with a freeCodeCamp news article.",
   "main": "./prod/index.js",
+  "license": "BSD-3-Clause",
   "scripts": {
     "build": "tsc",
     "send": "node ./prod/send.js"
